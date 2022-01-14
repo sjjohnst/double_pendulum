@@ -1,11 +1,18 @@
 import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
 import math
+import numpy as np
 
 # Constants
 G = 9.80
 PI = math.pi
 ORIGIN = [0, 0]
 T = 0.015 # time step
+ORIGIN = [0,0]
+
+sim_length = 20 # number of seconds to run for
+FPS = 120
+
 
 # Simple Pendulum
 class Pendulum:
@@ -23,10 +30,14 @@ class Pendulum:
         self.a_a = 0
 
     def update(self):
-        # Moves the pendulum one time step
+        # Update the angular acceleration
         self.a_a = -G / self.r * math.sin(self.a)
-        self.a_v += self.a_a
-        self.a += self.a_v
+
+        # Update velocity
+        self.a_v = self.a_v + self.a_a * T
+
+        # Update position
+        self.a = self.a + self.a_v*T + 0.5*self.a_a*T*T
 
     def get_coord(self):
         # Returns cartesian point, from angle and rod length
@@ -95,7 +106,7 @@ class DoublePendulum:
         self.a1 = self.a1 % (2*PI)
         self.a2 = self.a2 % (2*PI)
 
-    def get_coords(self):
+    def get_coord(self):
 
         x1 = self.r1 * math.sin(self.a1)
         y1 = -self.r1 * math.cos(self.a1)
@@ -106,30 +117,54 @@ class DoublePendulum:
         return [x1, x2], [y1, y2]
 
 
-# p = Pendulum(PI/2, 5.00)
-a1 = 3*PI/4
+a1 = PI/2
 a2 = PI/3
-r1 = 1.00
-r2 = 1.00
-dp = DoublePendulum(a1, a2, r1, r2)
+r1 = 0.8
+r2 = 0.8
+dp = Pendulum(a1, r1)
+# dp = DoublePendulum(a1, a2, r1, r2)
 
-# Time to run in seconds
-sim_length = 20
-FPS = 120
+fig = plt.figure(figsize=(10,10))
 
-for i in range(FPS * sim_length):
-    x, y = dp.get_coords()
+axis = plt.axes(xlim=(-2, 2),
+                ylim=(-2, 2))
 
-    plt.xlim(-2.5, 2.5)
-    plt.ylim(-2.5, 2.5)
-    plt.grid()
+line1, = axis.plot([],[], lw=3)
 
-    plt.plot([0, x[0]], [0, y[0]], color='black')
-    plt.plot(x, y, color='blue')
-    plt.scatter(x, y, s=50, color='black')
-    plt.pause(1.00/FPS)
 
+def init():
+    line1.set_data([], [])
+    return line1,
+
+
+def animate(i):
+    point = dp.get_coord()
+    coords = np.stack([ORIGIN, point])
     dp.update()
-    plt.clf()
+    line1.set_data(coords[:,0], coords[:,1])
 
-plt.show()
+    return line1,
+
+
+anim = FuncAnimation(fig, animate, init_func=init,
+                     frames=200, interval=20, blit=True)
+
+anim.save('test_anim.mp4',
+          writer='ffmpeg', fps=60)
+
+# for i in range(FPS * sim_length):
+#     x, y = dp.get_coord()
+#
+#     plt.xlim(-2.5, 2.5)
+#     plt.ylim(-2.5, 2.5)
+#     plt.grid()
+#
+#     plt.plot([0, x], [0, y], color='black')
+#     plt.plot(x, y, color='blue')
+#     plt.scatter(x, y, s=50, color='black')
+#     plt.pause(1.00/FPS)
+#
+#     dp.update()
+#     plt.clf()
+#
+# plt.show()
