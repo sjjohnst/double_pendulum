@@ -1,170 +1,97 @@
 import matplotlib.pyplot as plt
-from matplotlib.animation import FuncAnimation
-import math
 import numpy as np
-
-# Constants
-G = 9.80
-PI = math.pi
-ORIGIN = [0, 0]
-T = 0.015 # time step
-ORIGIN = [0,0]
-
-sim_length = 20 # number of seconds to run for
-FPS = 120
+from pendulum import DoublePendulum
+from parameters import *
+import random
+import os
+import shutil
+from PIL import Image
 
 
-# Simple Pendulum
-class Pendulum:
+# Plot the Double Pendulum state (coords) onto matplotlib axis
+def plot(ax, coords):
+    x, y = coords
 
-    def __init__(self, a, r):
-        """
-        a: angle of pendulum. (0 = vertical downwards, counter-clockwise is positive)
-        r = length of rod
-        """
-        self.a = a
-        self.r = r
+    ax.set_xlim(-r1*2 - r1/4, r1*2 + r1/4)
+    ax.set_ylim(-r1*2 - r1/4, r1*2 + r1/4)
+    ax.axis("off")
 
-        # Angular Velocity and Acceleration
-        self.a_v = 0
-        self.a_a = 0
+    # ax.plot([0, x[0]], [0, y[0]], color='green', linewidth=L, zorder=0)
+    # ax.plot(x, y, color='orange', linewidth=L, zorder=1)
 
-    def update(self):
-        # Update the angular acceleration
-        self.a_a = -G / self.r * math.sin(self.a)
-
-        # Update velocity
-        self.a_v = self.a_v + self.a_a * T
-
-        # Update position
-        self.a = self.a + self.a_v*T + 0.5*self.a_a*T*T
-
-    def get_coord(self):
-        # Returns cartesian point, from angle and rod length
-        # Assumes that rod is rooted at the origin (0,0)
-        x = self.r * math.sin(self.a)
-        y = -self.r * math.cos(self.a)
-        return [x, y]
+    # ax.scatter(0,    0,    s=S/10, linewidths=2, edgecolor='black', color='white',  zorder=2)
+    ax.scatter(x[0], y[0], s=S,    linewidths=2, edgecolor='black', color='green',  zorder=3)
+    ax.scatter(x[1], y[1], s=S,    linewidths=2, edgecolor='black', color='orange', zorder=4)
 
 
-class DoublePendulum:
+# Main driver
+# Simulation parameters
+sim_length = 40  # Number of seconds to run each pendulum
+FPS = 60        # Number of Frames to snap each second
+dt = 1.0 / FPS   # Delta Time for updating pendulum
+num_samples = 1  # How many double pendulum videos to initialize
+num_digits = len(str(num_samples))
 
-    def __init__(self, a1, a2, r1, r2):
-        """
-        a1: angle of pendulum 1
-        a2: angle of pendulum 2
-        r1: rod length of pendulum 1
-        r2: rod length of pendulum 2
-        """
+# Pendulum parameters, Ranges indicate low/high to sample from when randomly initializing pendulums
+r1 = r2 = 2.0               # Radius
+angle1_range = [0, 2*PI]    # Initial angle between origin and first mass
+angle2_range = [0, 2*PI]    # Initial angle between first mass and second mass
 
-        # Position
-        self.a1 = a1
-        self.a2 = a2
-        self.r1 = r1
-        self.r2 = r2
+# Matplotlib Figure Specs
+S = 1000     # Size of the pendulum mass markers
+L = 5       # Line width of pendulum mass connectors
 
-        self.m1 = 1.0
-        self.m2 = 1.0
+fig, ax = plt.subplots(1, figsize=(5, 5))
+fig.subplots_adjust(left=0, right=1, bottom=0, top=1)
 
-        # Acceleration and velocity
-        self.a1_v = 0.0
-        self.a2_v = 0.0
-        self.a1_a = 0.0
-        self.a2_a = 0.0
+a1 = random.uniform(angle1_range[0], angle1_range[1])
+a2 = random.uniform(angle2_range[0], angle2_range[1])
+dp = DoublePendulum(a1, a2, r1, r2)
 
-    def update(self):
-        # The motion of a pendulum can be modelled using an equation,
-        # however, these equations are long, so we break them up into components to calculate angular acceleration
+# plot(ax, dp.get_coord())
+# fig.savefig("test.png", dpi=15, facecolor='black')
+# im = Image.open("test.png")
+# im_array = np.array(im)
+# print(im_array.shape)
 
-        # Acceleration of mass 1
-        num1 = -G * (2*self.m1 + self.m2) * math.sin(self.a1)
-        num2 = -self.m2 * G * math.sin(self.a1 - 2*self.a2)
-        num3 = -2 * math.sin(self.a1 - self.a2) * self.m2
-        num4 = self.a2_v * self.a2_v * self.r2 + self.a1_v * self.a1_v * self.r1 * math.cos(self.a1 - self.a2)
-        den = self.r1 * (2*self.m1 + self.m2 - self.m2 * math.cos(2*self.a1 - 2*self.a2))
+for i in range(num_samples):
 
-        self.a1_a = (num1 + num2 + num3 * num4) / den
+    a1 = random.uniform(angle1_range[0], angle1_range[1])
+    a2 = random.uniform(angle2_range[0], angle2_range[1])
+    dp = DoublePendulum(a1, a2, r1, r2)
 
-        # Acceleration of mass 2
-        num1 = 2 * math.sin(self.a1 - self.a2)
-        num2 = self.a1_v * self.a1_v * self.r1 * (self.m1 + self.m2)
-        num3 = G * (self.m1 + self.m2) * math.cos(self.a1)
-        num4 = self.a2_v * self.a2_v * self.r2 * self.m2 * math.cos(self.a1 - self.a2)
-        den = self.r2 * (2*self.m1 + self.m2 - self.m2 * math.cos(2*self.a1 - 2*self.a2))
+    index = str(i).zfill(num_digits)
+    directory_name = os.path.join("Data", f"{index}")
+    if not os.path.isdir(directory_name):
+        # make the directory
+        os.mkdir(directory_name)
+    else:
+        # Folder already exists, clear its data
+        shutil.rmtree(directory_name)
+        os.mkdir(directory_name)
 
-        self.a2_a = num1 * (num2 + num3 + num4) / den
+    num_frames = FPS*sim_length
+    num_frames_digits = len(str(num_frames))
+    for j in range(num_frames):
 
-        # Now update angular position
-        self.a1 = self.a1 + self.a1_v*T + 0.5*self.a1_a*T*T
-        self.a2 = self.a2 + self.a2_v*T + 0.5*self.a2_a*T*T
+        # Plot current state and save image
+        plot(ax, dp.get_coord())
+        fig.savefig("temp.png", dpi=15, facecolor='black')
+        im = Image.open("temp.png")
+        im_array = np.array(im)
+        np.save(os.path.join(directory_name, f"{j}".zfill(num_frames_digits)), im_array)
 
-        # We update velocities last
-        self.a1_v += self.a1_a * T
-        self.a2_v += self.a2_a * T
+        # Clear the plot
+        ax.clear()
 
-        # Keep angles in domain of one circle
-        self.a1 = self.a1 % (2*PI)
-        self.a2 = self.a2 % (2*PI)
-
-    def get_coord(self):
-
-        x1 = self.r1 * math.sin(self.a1)
-        y1 = -self.r1 * math.cos(self.a1)
-
-        x2 = x1 + self.r2 * math.sin(self.a2)
-        y2 = y1 + (-self.r2 * math.cos(self.a2))
-
-        return [x1, x2], [y1, y2]
+        # Update state
+        dp.update(dt)
 
 
-a1 = PI/2
-a2 = PI/3
-r1 = 0.8
-r2 = 0.8
-dp = Pendulum(a1, r1)
-# dp = DoublePendulum(a1, a2, r1, r2)
+# Test loading one of the npy files and showing in matplotlib
 
-fig = plt.figure(figsize=(10,10))
+file = os.path.join(directory_name, f"{j}".zfill(num_frames_digits) + ".npy")
+im = np.load(file)
 
-axis = plt.axes(xlim=(-2, 2),
-                ylim=(-2, 2))
-
-line1, = axis.plot([],[], lw=3)
-
-
-def init():
-    line1.set_data([], [])
-    return line1,
-
-
-def animate(i):
-    point = dp.get_coord()
-    coords = np.stack([ORIGIN, point])
-    dp.update()
-    line1.set_data(coords[:,0], coords[:,1])
-
-    return line1,
-
-
-anim = FuncAnimation(fig, animate, init_func=init,
-                     frames=200, interval=20, blit=True)
-
-anim.save('test_anim.mp4',
-          writer='ffmpeg', fps=60)
-
-# for i in range(FPS * sim_length):
-#     x, y = dp.get_coord()
-#
-#     plt.xlim(-2.5, 2.5)
-#     plt.ylim(-2.5, 2.5)
-#     plt.grid()
-#
-#     plt.plot([0, x], [0, y], color='black')
-#     plt.plot(x, y, color='blue')
-#     plt.scatter(x, y, s=50, color='black')
-#     plt.pause(1.00/FPS)
-#
-#     dp.update()
-#     plt.clf()
-#
-# plt.show()
+plt.imshow(im)
+plt.show()
