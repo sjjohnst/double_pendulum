@@ -32,7 +32,11 @@ class Pendulum:
         # Assumes that rod is rooted at the origin (0,0)
         x = self.r * math.sin(self.a)
         y = -self.r * math.cos(self.a)
-        return [x, y]
+        return [[x], [y]]
+
+    def get_state(self):
+        # returns angle
+        return self.a
 
 
 class DoublePendulum:
@@ -102,4 +106,5 @@ class DoublePendulum:
         x2 = x1 + self.r2 * math.sin(self.a2)
         y2 = y1 + (-self.r2 * math.cos(self.a2))
 
-        return [x1, x2], [y1, y2]
+        return [[x1, x2], [y1, y2]]
+
